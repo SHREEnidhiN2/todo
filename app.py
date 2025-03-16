@@ -1,27 +1,52 @@
-# #pip install flask
-# from flask import Flask, render_template, request, redirect
+#pip install flask flask-sqlalchemy
+#database integrated
+from flask import Flask, render_template, request, redirect
+from flask_sqlalchemy import SQLAlchemy
 
-# app = Flask(__name__)
+app = Flask(__name__)
 
-# tasks = []  #list of tasks
+# Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo4.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+db = SQLAlchemy(app)
 
-# @app.route('/')
-# def home():
-#     return render_template('index.html', tasks=tasks)
+# Define Task Model
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.String(200), nullable=False)
 
-# @app.route('/add', methods=['POST'])
-# def add_task():
-#     task = request.form.get('task')
-#     if task:
-#         tasks.append(task)
-#     return redirect('/')
+    def __repr__(self):
+        return f'Task {self.id}: {self.content}'
 
-# @app.route('/delete/<int:index>')
-# def delete_task(index):
-#     if 0 <= index < len(tasks):
-#         tasks.pop(index)
-#     return redirect('/')
+# Create the database
+with app.app_context():
+    db.create_all()
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
+# Home Page - Show Tasks
+@app.route('/')
+def home():
+    tasks = Task.query.all()  # Fetch tasks from the database
+    return render_template('index4.html', tasks=tasks)
+
+# Add a New Task
+@app.route('/add', methods=['POST'])
+def add_task():
+    task_content = request.form.get('task')
+    if task_content:
+        new_task = Task(content=task_content)  # Create new task
+        db.session.add(new_task)  # Add to database
+        db.session.commit()  # Save changes
+    return redirect('/')
+
+# Delete a Task
+@app.route('/delete/<int:id>')
+def delete_task(id):
+    task = Task.query.get(id)  # Get task by ID
+    if task:
+        db.session.delete(task)  # Remove from database
+        db.session.commit()  # Save changes
+    return redirect('/')
+
+if __name__ == '__main__':
+    app.run(debug=True)
